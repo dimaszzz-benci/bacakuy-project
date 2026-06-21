@@ -1,15 +1,33 @@
-// @lovable.dev/vite-tanstack-config already includes the following — do NOT add them manually
-// or the app will break with duplicate plugins:
-//   - tanstackStart, viteReact, tailwindcss, tsConfigPaths, nitro (build-only using cloudflare as a default target),
-//     componentTagger (dev-only), VITE_* env injection, @ path alias, React/TanStack dedupe,
-//     error logger plugins, and sandbox detection (port/host/strictPort).
-// You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
-import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+// Konfigurasi Vite standar untuk TanStack Start.
+//
+// Catatan: versi sebelumnya memakai paket internal milik Lovable
+// (@lovable.dev/vite-tanstack-config) yang otomatis menyesuaikan diri kalau
+// dijalankan di platform Lovable. Di luar platform itu (misalnya saat
+// di-build di Vercel), paket tersebut menonaktifkan beberapa plugin penting
+// (termasuk Nitro) sehingga build gagal. Konfigurasi di bawah ini memakai
+// plugin resmi TanStack Start secara langsung, supaya project bisa di-build
+// dan dijalankan di hosting mana saja (Vercel, Netlify, Cloudflare, dll).
+import { defineConfig } from "vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import viteReact from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import viteTsConfigPaths from "vite-tsconfig-paths";
+import { nitro } from "nitro/vite";
 
 export default defineConfig({
-  tanstackStart: {
-    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-    // nitro/vite builds from this
-    server: { entry: "server" },
-  },
+  plugins: [
+    viteTsConfigPaths({ projects: ["./tsconfig.json"] }),
+    tailwindcss(),
+    tanstackStart({
+      // Server entry kustom (src/server.ts) menangani pembungkus error
+      // halaman gagal ("MUAT ULANG") sebelum permintaan diteruskan ke
+      // TanStack Start.
+      server: { entry: "server" },
+    }),
+    // Nitro otomatis mendeteksi platform deploy (Vercel, Cloudflare, Netlify,
+    // Node biasa, dst) lewat variabel lingkungan yang disuntikkan platform
+    // tersebut saat proses build, jadi tidak perlu preset tetap di sini.
+    nitro(),
+    viteReact(),
+  ],
 });
